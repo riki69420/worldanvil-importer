@@ -1,0 +1,117 @@
+# Elaris → World Anvil import
+
+Converts a **Fantasia Archive** markdown export and an **Azgaar Fantasy Map
+Generator** `.map` file into World Anvil articles, a usable map image, and
+marker coordinates.
+
+World Anvil has no bulk article import. The only programmatic route in is the
+Boromir API (v2), and creating an API application requires a Worldbuilder's
+Guild membership above Grandmaster rank. This repo covers both cases: it
+generates paste-ready article bodies that need no API access, and an uploader
+for when API access is available.
+
+## What's in the box
+
+| Path | What it is |
+| --- | --- |
+| `data/Elaris - Export/` | the Fantasia Archive export (126 documents) |
+| `data/Lenyhaha.map` | the Azgaar FMG map (v1.150.0) |
+| `out/bbcode/<template>/*.txt` | one paste-ready article per document |
+| `out/articles.json` | the same articles as Boromir API payloads |
+| `out/manifest.csv` | title, template, tags, outbound link count, source |
+| `out/dangling-links.txt` | mentions pointing at a title nothing provides |
+| `out/map/elaris.png` | the map at 6144×2780, ready to upload |
+| `out/map/elaris.svg` | the same map, vector, fixed to render standalone |
+| `out/map/burgs.csv` | 28 settlements with pixel and fractional positions |
+| `out/map/states.csv` | 12 political entities with area and population |
+
+## Usage
+
+```bash
+pip install -r requirements.txt
+python build.py                 # regenerate out/ from data/
+python build.py --no-png        # skip the Chromium render
+python build.py --scale 6       # bigger map (9216×4170)
+```
+
+With API access:
+
+```bash
+export WORLDANVIL_APP_KEY=...      # from your approved API application
+export WORLDANVIL_AUTH_TOKEN=...   # worldanvil.com → Settings → API Keys
+
+python push.py --list-worlds
+python push.py --world <uuid> --dry-run
+python push.py --world <uuid>
+```
+
+`push.py` records every created article in `out/import-state.json` keyed by its
+Fantasia Archive UUID. Re-running updates those articles in place rather than
+creating duplicates, so an interrupted run can just be repeated.
+
+## How the conversion works
+
+### Templates
+
+Fantasia Archive's document types map onto World Anvil's fixed template set
+(the `entityClass` enum in the Boromir OpenAPI spec). Locations are refined by
+their Fantasia Archive "Location type", so a City becomes a `settlement` and a
+Country becomes a `location`:
+
+| Fantasia Archive | World Anvil | Count |
+| --- | --- | --: |
+| Location/Geography (Country, Continent, Area, Terrain formation) | `location` | 28 |
+| Location/Geography (City, Town, Village) | `settlement` | 28 |
+| Item, Currency | `item` | 24 |
+| Occupation/Class | `profession` | 10 |
+| Species/Race/Flora/Fauna | `species` | 8 |
+| Organization, School of Magic, Teaching/Religious group | `organization` | 7 |
+| Language | `language` | 5 |
+| Location/Geography (Building, Structure) | `landmark` | 5 |
+| Skill/Spell/Other (Spell, Blessing, Magical skill) | `spell` | 3 |
+| Character | `person` | 3 |
+| Skill/Spell/Other (non-magical) | `article` | 4 |
+| Resource/Material | `material` | 1 |
+
+Currencies go to `item` because World Anvil has no currency template;
+religious groups go to `organization` for the same reason.
+
+### Fields
+
+Only the `location` template has its custom fields published in the API spec,
+so location-family articles get real template fields (`population`, `areaSize`,
+`alternativename`, `naturalresources`, `history`) and everything else is
+rendered as BBCode sections inside the generic `content` and `sidebarcontent`.
+If a template rejects a field with HTTP 422, re-run with
+`push.py --no-template-fields`.
+
+### Links
+
+Cross-references become World Anvil mentions — `@[Article Title]` — which
+resolve by title at render time. No UUID bookkeeping is needed, but a mention
+whose title doesn't exist renders as plain text. `out/dangling-links.txt` lists
+those; they are mostly typos in the source export (a trailing `:` on
+`Mistriver Gorge`, a reference to `Classes` that was never a document).
+
+### The map
+
+The `.map` file is line-delimited: a header, some JSON blobs, the rendered SVG,
+then one JSON array per entity collection. Collections are identified by the
+keys their records carry rather than by line offset, because the offsets move
+between FMG versions.
+
+Two fixes make the embedded SVG render outside the FMG web app: the
+`./images/pattern*.png` references are dropped, and `mask="url(#land)"` is
+re-attached to the `#landmass` group — FMG applies it at load time, and without
+it the landmass rect paints over the whole ocean.
+
+The exported SVG only contains the layers that were visible in FMG at export
+time. On this map that is coastlines, roads, borders and labels — biomes,
+relief, heightmap and state fills were all switched off, so they are not in the
+file and cannot be recovered from it. For a richer map image, turn those layers
+on in FMG and export again (or use FMG's own PNG export).
+
+`burgs.csv` gives each settlement's position both in SVG pixels and as a 0–1
+fraction of the canvas; the fractional form is what a re-scaled export needs.
+World Anvil's marker API shape is not in the published spec, so markers are
+left as data to import through the map editor rather than pushed blindly.
