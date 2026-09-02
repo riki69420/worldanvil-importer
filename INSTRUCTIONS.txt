@@ -28,16 +28,13 @@ GETTING THE PROGRAM
      ElarisImporter.exe     the program
      INSTRUCTIONS.txt       this file
      extension\             the Chrome/Edge helper (Step 2C)
-     already-converted\     your current export, ALREADY converted — you can
-                            skip Step 1 and go straight to Step 2 with this
-     source-data\           the export and map it was made from
+
+The download contains no worldbuilding data — only the tools. Your export
+and map stay on your own computer; nothing is uploaded anywhere by Step 1.
 
 First time you run the exe Windows shows "Windows protected your PC". That
 is because the program is not signed with a paid certificate, nothing more.
 Click "More info", then "Run anyway".
-
-(If you have a newer export than the one in already-converted\, run Step 1
-on it. Otherwise you never need to open the exe at all.)
 
 
 STEP 1 — CONVERT (no World Anvil account needed for this)

@@ -17,16 +17,21 @@ for when API access is available.
 | `gui.py` | the desktop app (Tkinter, stdlib only) |
 | `extension/` | Chrome/Edge paste assistant for World Anvil's editor |
 | `build.py` / `push.py` | the same pipeline on the command line |
-| `data/Elaris - Export/` | the Fantasia Archive export (126 documents) |
-| `data/Lenyhaha.map` | the Azgaar FMG map (v1.150.0) |
-| `out/bbcode/<template>/*.txt` | one paste-ready article per document |
-| `out/articles.json` | the same articles as Boromir API payloads |
-| `out/manifest.csv` | title, template, tags, outbound link count, source |
-| `out/dangling-links.txt` | mentions pointing at a title nothing provides |
-| `out/map/elaris.png` | the map at 6144×2780, ready to upload |
-| `out/map/elaris.svg` | the same map, vector, fixed to render standalone |
-| `out/map/burgs.csv` | 28 settlements with pixel and fractional positions |
-| `out/map/states.csv` | 12 political entities with area and population |
+| `tests/fixtures/` | a small **invented** export and map the tests run on |
+
+The repository holds no real worldbuilding data. Everything the converter
+writes goes to a local `out/` folder (git-ignored), containing:
+
+| Output | What it is |
+| --- | --- |
+| `bbcode/<template>/*.txt` | one paste-ready article per document |
+| `articles.json` | the same articles as Boromir API payloads / extension input |
+| `manifest.csv` | title, template, tags, outbound link count, source |
+| `dangling-links.txt` | mentions pointing at a title nothing provides |
+| `map/elaris.png` | the map at 4× the SVG's size, ready to upload |
+| `map/elaris.svg` | the same map, vector, fixed to render standalone |
+| `map/burgs.csv` | settlements with pixel and fractional positions |
+| `map/states.csv` | political entities with area and population |
 
 ## The app
 
@@ -37,8 +42,8 @@ export zip and your `.map`, press **Convert**, and optionally paste your World
 Anvil credentials and press **Convert and upload**.
 
 **Download the bundle from [Releases](../../releases)** —
-`ElarisImporter-vX.Y.Z.zip` holds the exe, the extension, the instructions,
-the already-converted output and the source data. Every push of a `v*` tag
+`ElarisImporter-vX.Y.Z.zip` holds the exe, the extension and the
+instructions — tools only, no data. Every push of a `v*` tag
 builds and publishes one; a manual run of the
 [workflow](../../actions/workflows/build-exe.yml) produces the same zip as an
 artifact without publishing a release.
@@ -80,10 +85,10 @@ across reloads (`tests/test_extension.py`, needs Playwright + a display).
 ## Command line
 
 ```bash
-python build.py                 # regenerate out/ from data/
-python build.py --no-png        # skip the map render
-python build.py --scale 6       # bigger map (9216×4170)
-python build.py --export path/to/export.zip --map path/to/world.map --out out
+python build.py --export "My World - Export.zip" --map world.map
+python build.py --export path/to/unzipped/folder --out converted
+python build.py --map world.map --no-png      # map data only, no render
+python build.py --export x.zip --scale 6      # bigger map image
 ```
 
 With API access:
@@ -125,20 +130,20 @@ Fantasia Archive's document types map onto World Anvil's fixed template set
 their Fantasia Archive "Location type", so a City becomes a `settlement` and a
 Country becomes a `location`:
 
-| Fantasia Archive | World Anvil | Count |
-| --- | --- | --: |
-| Location/Geography (Country, Continent, Area, Terrain formation) | `location` | 28 |
-| Location/Geography (City, Town, Village) | `settlement` | 28 |
-| Item, Currency | `item` | 24 |
-| Occupation/Class | `profession` | 10 |
-| Species/Race/Flora/Fauna | `species` | 8 |
-| Organization, School of Magic, Teaching/Religious group | `organization` | 7 |
-| Language | `language` | 5 |
-| Location/Geography (Building, Structure) | `landmark` | 5 |
-| Skill/Spell/Other (Spell, Blessing, Magical skill) | `spell` | 3 |
-| Character | `person` | 3 |
-| Skill/Spell/Other (non-magical) | `article` | 4 |
-| Resource/Material | `material` | 1 |
+| Fantasia Archive | World Anvil |
+| --- | --- |
+| Location/Geography (Country, Continent, Area, Terrain formation) | `location` |
+| Location/Geography (City, Town, Village) | `settlement` |
+| Location/Geography (Building, Structure) | `landmark` |
+| Item, Currency | `item` |
+| Occupation/Class | `profession` |
+| Species/Race/Flora/Fauna | `species` |
+| Organization, School of Magic, Teaching/Religious group | `organization` |
+| Language | `language` |
+| Skill/Spell/Other (Spell, Blessing, Magical skill) | `spell` |
+| Skill/Spell/Other (non-magical) | `article` |
+| Character | `person` |
+| Resource/Material | `material` |
 
 Currencies go to `item` because World Anvil has no currency template;
 religious groups go to `organization` for the same reason.
@@ -157,8 +162,8 @@ If a template rejects a field with HTTP 422, re-run with
 Cross-references become World Anvil mentions — `@[Article Title]` — which
 resolve by title at render time. No UUID bookkeeping is needed, but a mention
 whose title doesn't exist renders as plain text. `out/dangling-links.txt` lists
-those; they are mostly typos in the source export (a trailing `:` on
-`Mistriver Gorge`, a reference to `Classes` that was never a document).
+those; in practice they are typos in the source export (a stray trailing
+character on a name, a reference to a document that was never written).
 
 ### The map
 
@@ -181,10 +186,9 @@ hundred pixels tall. If no browser is found the SVG is still written and the
 app says so.
 
 The exported SVG only contains the layers that were visible in FMG at export
-time. On this map that is coastlines, roads, borders and labels — biomes,
-relief, heightmap and state fills were all switched off, so they are not in the
-file and cannot be recovered from it. For a richer map image, turn those layers
-on in FMG and export again (or use FMG's own PNG export).
+time. Layers that were switched off — biomes, relief, heightmap, state fills —
+are not in the file and cannot be recovered from it. For a richer map image,
+turn them on in FMG and save again (or use FMG's own PNG export).
 
 `burgs.csv` gives each settlement's position both in SVG pixels and as a 0–1
 fraction of the canvas; the fractional form is what a re-scaled export needs.

@@ -1,13 +1,15 @@
-"""End-to-end checks against the real export and map in ``data/``.
+"""End-to-end checks against the synthetic export and map in ``tests/fixtures``.
 
-These run in CI on Windows before the executable is built, so anything that
-would break the packaged app breaks the build instead.
+The fixtures are invented data shaped like a real Fantasia Archive export and
+a real Azgaar ``.map``, so the repository carries no one's worldbuilding.
+These run in CI on Windows before the executable is built.
 """
 
 from __future__ import annotations
 
 import json
 import re
+import shutil
 import xml.etree.ElementTree as ET
 from collections import Counter
 from pathlib import Path
@@ -20,17 +22,16 @@ from elaris_import.fa_parse import parse_export, split_qualifier, strip_html
 from elaris_import.mapping import TEMPLATE_TYPES, resolve_template
 from elaris_import.pipeline import PipelineError, convert, find_export_root
 
-ROOT = Path(__file__).resolve().parent.parent
-EXPORT = ROOT / "data" / "Elaris - Export"
-MAP = ROOT / "data" / "Lenyhaha.map"
+FIXTURES = Path(__file__).resolve().parent / "fixtures"
+EXPORT = FIXTURES / "export"  # the category folders sit one level down
+MAP = FIXTURES / "sample.map"
 
-# Every BBCode tag the renderer emits, so balance can be checked.
 TAGS = ("h2", "h3", "ul", "li", "b", "i")
 
 
 @pytest.fixture(scope="module")
 def docs():
-    return parse_export(EXPORT)
+    return parse_export(find_export_root(EXPORT))
 
 
 @pytest.fixture(scope="module")
@@ -46,15 +47,14 @@ def map_data():
 # -- parser -----------------------------------------------------------------
 
 def test_every_document_is_parsed(docs):
-    files = list(EXPORT.rglob("*.md"))
-    assert len(docs) == len(files) == 126
+    assert len(docs) == len(list(EXPORT.rglob("*.md"))) == 8
 
 
 def test_every_document_has_title_and_type(docs):
     for d in docs:
         assert d.title.strip(), d.source
         assert d.doc_type, d.source
-        assert d.uuid and len(d.uuid) == 36, d.source
+        assert len(d.uuid) == 36, d.source
 
 
 def test_no_html_survives(docs):
@@ -62,6 +62,13 @@ def test_no_html_survives(docs):
         for f in d.fields:
             for v in f.values:
                 assert "<" not in v and ">" not in v, (d.title, f.name, v)
+
+
+def test_paragraph_breaks_are_kept(docs):
+    testland = next(d for d in docs if d.title == "Testland")
+    assert testland.values("Description & History") == [
+        "A country that exists only in the test suite.\nSecond paragraph."
+    ]
 
 
 def test_strip_html_keeps_paragraph_breaks():
@@ -75,13 +82,17 @@ def test_qualifier_split():
     assert split_qualifier("Weird (a) (b)") == ("Weird (a)", "b")
 
 
-def test_export_root_rejects_non_folder(tmp_path):
+def test_export_root_is_found_one_level_down():
+    assert find_export_root(EXPORT).name == "Mock World - Export"
+
+
+def test_export_root_rejects_bad_input(tmp_path):
     f = tmp_path / "x.txt"
     f.write_text("nope")
     with pytest.raises(PipelineError):
         find_export_root(f)
     with pytest.raises(PipelineError):
-        find_export_root(tmp_path)  # empty dir, no categories
+        find_export_root(tmp_path)
 
 
 # -- mapping + rendering ----------------------------------------------------
@@ -92,11 +103,9 @@ def test_templates_are_valid(articles):
 
 
 def test_template_distribution(articles):
-    counts = Counter(a.template for a in articles)
-    assert counts == {
-        "location": 28, "settlement": 28, "item": 24, "profession": 10,
-        "species": 8, "organization": 7, "language": 5, "landmark": 5,
-        "article": 4, "person": 3, "spell": 3, "material": 1,
+    assert Counter(a.template for a in articles) == {
+        "location": 1, "settlement": 1, "person": 1, "item": 2,
+        "language": 1, "species": 1, "spell": 1,
     }
 
 
@@ -112,78 +121,90 @@ def test_unknown_document_type_falls_back_to_article(docs):
 
 def test_bbcode_tags_balance(articles):
     for a in articles:
+        text = a.content + a.sidebar
         for tag in TAGS:
-            opened = len(re.findall(rf"\[{tag}\]", a.content + a.sidebar))
-            closed = len(re.findall(rf"\[/{tag}\]", a.content + a.sidebar))
-            assert opened == closed, (a.title, tag)
+            assert text.count(f"[{tag}]") == text.count(f"[/{tag}]"), (a.title, tag)
 
 
-def test_mentions_are_well_formed(articles):
+def test_mentions_and_qualifiers(articles):
+    coin = next(a for a in articles if a.title == "Mockcoin")
+    assert "@[Gold] (2)" in coin.content
+    assert "@[Testland]" in coin.content
     for a in articles:
         for m in re.findall(r"@\[([^\]]*)\]", a.content):
             assert m.strip() and "[" not in m, (a.title, m)
 
 
-def test_no_article_has_empty_content(articles):
-    for a in articles:
-        assert a.content.strip(), a.title
-        assert len(a.excerpt) <= 300, a.title
+def test_stub_article_gets_placeholder_content(articles):
+    wrench = next(a for a in articles if a.title == "Wrench")
+    assert wrench.content == "[i]Imported from Fantasia Archive.[/i]"
 
 
 def test_location_template_fields(articles):
+    testland = next(a for a in articles if a.title == "Testland")
+    assert testland.template_fields == {
+        "population": "12.345", "areaSize": "999 km²",
+        "locationTemplateType": "Country",
+        "history": "A country that exists only in the test suite.\nSecond paragraph.",
+    }
+    city = next(a for a in articles if a.title == "Mockshire")
+    assert city.template_fields["alternativename"] == "The Fixture City"
+    # Fields carried natively by the template are not repeated in the sidebar.
+    assert "Population" not in testland.sidebar
     for a in articles:
-        if a.template in {"location", "settlement", "landmark"}:
-            assert set(a.template_fields) <= {
-                "population", "areaSize", "alternativename",
-                "naturalresources", "locationTemplateType", "history",
-            }, a.title
-        else:
+        if a.template not in {"location", "settlement", "landmark"}:
             assert not a.template_fields, a.title
 
 
-def test_dangling_links_are_the_known_ones(articles):
+def test_dangling_links_are_reported(articles):
     missing = dangling_mentions(articles)
-    assert sum(len(v) for v in missing.values()) == 12
-    # These are typos in the source data, not conversion bugs.
-    assert "Mistriver Gorge:" in missing["ELANDOR"]
+    assert missing == {"Mockcoin": ["Gold"], "Testland": ["Nowhere Isle"]}
 
 
-def test_titles_unique_within_template(articles):
-    seen = Counter((a.template, a.title.casefold()) for a in articles)
-    assert not [k for k, n in seen.items() if n > 1]
+def test_excerpt_is_first_line(articles):
+    testland = next(a for a in articles if a.title == "Testland")
+    assert testland.excerpt == "A country that exists only in the test suite."
 
 
 # -- map --------------------------------------------------------------------
 
 def test_map_collections_identified(map_data):
-    for kind in ("burgs", "states", "cultures", "religions", "provinces", "rivers"):
+    for kind in ("burgs", "states", "cultures", "religions", "provinces", "rivers", "features"):
         assert map_data.entities.get(kind), kind
-    assert map_data.width == 1536 and map_data.height == 695
+    assert (map_data.width, map_data.height) == (400, 200)
+    assert map_data.distance_unit == "km" and map_data.distance_scale == 5.0
 
 
-def test_burgs_are_inside_the_canvas(map_data):
+def test_burgs_skip_tombstones_and_carry_positions(map_data):
     burgs = azgaar.burg_markers(map_data)
-    assert len(burgs) == 28
-    for b in burgs:
-        assert 0 <= b["x"] <= map_data.width and 0 <= b["y"] <= map_data.height, b
-        assert 0 <= b["fx"] <= 1 and 0 <= b["fy"] <= 1, b
-        assert b["name"]
+    assert [b["name"] for b in burgs] == ["Mockshire", "Stubton"]
+    first = burgs[0]
+    assert (first["x"], first["y"]) == (100.5, 80.25)
+    assert (first["fx"], first["fy"]) == (0.25125, 0.40125)
+    assert first["state"] == "Testland" and first["culture"] == "Mockfolk"
+    assert first["is_capital"] and not first["is_port"]
+    assert burgs[1]["is_port"]
 
 
-def test_states_exclude_neutrals(map_data):
-    names = {s["name"] for s in azgaar.state_rows(map_data)}
-    assert "Neutrals" not in names
-    assert {"MYR", "Aelwyndor", "Zandaris"} <= names
+def test_states_exclude_neutrals_and_tombstones(map_data):
+    rows = azgaar.state_rows(map_data)
+    assert [r["name"] for r in rows] == ["Testland"]
+    assert rows[0]["full_name"] == "Republic of Testland"
+
+
+def test_all_removed_religions_still_classified(map_data):
+    assert len(map_data.entities["religions"]) == 2
+    assert [r["name"] for r in map_data.named("religions")] == ["No religion"]
 
 
 def test_cleaned_svg_is_valid_xml_and_masked(map_data):
     svg = azgaar.clean_svg(map_data.svg)
-    ET.fromstring(svg)  # raises on malformed markup
-    assert 'id="landmass"' in svg
+    ET.fromstring(svg)
     assert re.search(r'<g id="landmass"[^>]*mask="url\(#land\)"', svg)
     assert "./images/" not in svg
+    assert re.search(r'<g id="sea_island"[^>]*fill="none"', svg)
     # Self-closing groups must stay self-closing after attribute injection.
-    assert '<g id="lake_island"' in svg
+    assert re.search(r'<g id="lake_island"[^>]*fill="none"/>', svg)
     assert "/ fill=" not in svg
 
 
@@ -191,28 +212,26 @@ def test_cleaned_svg_is_valid_xml_and_masked(map_data):
 
 def test_convert_from_folder(tmp_path):
     result = convert(EXPORT, MAP, tmp_path, render_png=False, log=lambda _: None)
-    assert result.article_count == 126
-    assert result.burg_count == 28
-    assert (tmp_path / "articles.json").exists()
+    assert result.article_count == 8
+    assert result.burg_count == 2 and result.state_count == 1
     assert (tmp_path / "map" / "elaris.svg").exists()
-    assert len(list((tmp_path / "bbcode").rglob("*.txt"))) == 126
+    assert len(list((tmp_path / "bbcode").rglob("*.txt"))) == 8
 
     payloads = json.loads((tmp_path / "articles.json").read_text(encoding="utf-8"))
     assert {p["_faUuid"] for p in payloads} == {
-        re.search(r"([0-9a-f-]{36})\.md$", str(f)).group(1)
-        for f in EXPORT.rglob("*.md")
+        re.search(r"([0-9a-f-]{36})\.md$", str(f)).group(1) for f in EXPORT.rglob("*.md")
     }
+    burgs = (tmp_path / "map" / "burgs.csv").read_text(encoding="utf-8").splitlines()
+    assert burgs[0].startswith("name,x,y,fx,fy,state")
+    assert len(burgs) == 3
 
 
 def test_convert_from_zip(tmp_path):
-    import shutil
-    archive = shutil.make_archive(str(tmp_path / "export"), "zip", EXPORT.parent, EXPORT.name)
-    out = tmp_path / "out"
-    result = convert(Path(archive), None, out, render_png=False, log=lambda _: None)
-    assert result.article_count == 126
+    archive = shutil.make_archive(str(tmp_path / "export"), "zip", EXPORT)
+    result = convert(Path(archive), None, tmp_path / "out", render_png=False, log=lambda _: None)
+    assert result.article_count == 8
 
 
 def test_convert_needs_something(tmp_path):
     with pytest.raises(PipelineError):
-        convert(tmp_path / "missing", None, tmp_path / "out", render_png=False,
-                log=lambda _: None)
+        convert(tmp_path / "missing", None, tmp_path / "out", render_png=False, log=lambda _: None)

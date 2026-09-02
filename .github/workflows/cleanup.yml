@@ -1,0 +1,47 @@
+name: Remove published data
+
+# One-shot cleanup: deletes a release and its tag, and every Actions
+# artifact in the repository. Exists because release zips and build
+# artifacts once contained the worldbuilding data this tool was tested on.
+# The runner's token can delete these; a developer's proxy-limited push
+# access cannot.
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to delete together with its tag (empty = none)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  purge:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Delete release and tag
+        if: inputs.release_tag != ''
+        run: |
+          gh release delete "${{ inputs.release_tag }}" --repo "$REPO" --cleanup-tag --yes \
+            && echo "deleted release ${{ inputs.release_tag }}" \
+            || echo "release ${{ inputs.release_tag }} not found (already gone?)"
+
+      - name: Delete every Actions artifact
+        run: |
+          ids=$(gh api --paginate "repos/$REPO/actions/artifacts" --jq '.artifacts[].id')
+          count=0
+          for id in $ids; do
+            gh api -X DELETE "repos/$REPO/actions/artifacts/$id" && count=$((count + 1))
+          done
+          echo "deleted $count artifact(s)"
+
+      - name: What remains
+        run: |
+          echo "releases:"; gh release list --repo "$REPO" || true
+          echo "artifacts:"; gh api "repos/$REPO/actions/artifacts" --jq '.total_count'

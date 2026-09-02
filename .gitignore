@@ -1,8 +1,14 @@
 __pycache__/
 *.pyc
-out/import-state.json
 .venv/
 build/
 dist/
 ci-out/
-*.spec.bak
+bundle/
+
+# Never commit worldbuilding data: the repo is public.
+data/
+out/
+*.map
+*.zip
+.claude/

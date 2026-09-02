@@ -57,21 +57,20 @@ jobs:
           "self-test passed"
         shell: pwsh
 
-      - name: Convert the bundled data
+      - name: Smoke-test the pipeline on the synthetic fixtures
         # The runner has Edge, so this also exercises the real map render path
-        # the packaged app uses on a user's PC. Output ships in the bundle so
-        # the current export is usable without running anything.
-        run: python build.py --out bundle/already-converted
+        # the packaged app uses on a user's PC. Nothing from this ships.
+        run: python build.py --export tests/fixtures/export --map tests/fixtures/sample.map --out ci-out
 
       - name: Assemble the bundle
         run: |
           $version = if ("${{ env.VERSION }}") { "${{ env.VERSION }}" } else { "dev-" + "${{ github.sha }}".Substring(0, 7) }
+          New-Item -ItemType Directory bundle | Out-Null
           Copy-Item dist/ElarisImporter.exe bundle/
           Copy-Item INSTRUCTIONS.txt bundle/
           Copy-Item README.md bundle/
           Copy-Item -Recurse extension bundle/extension
-          Copy-Item -Recurse data bundle/source-data
-          Get-ChildItem bundle/already-converted/map | Format-Table Name, Length
+          Get-ChildItem ci-out/map | Format-Table Name, Length
           $zip = "ElarisImporter-$version.zip"
           Compress-Archive -Path bundle/* -DestinationPath $zip
           "BUNDLE=$zip" >> $env:GITHUB_ENV
@@ -103,7 +102,5 @@ jobs:
             - `ElarisImporter.exe` — the converter app (Windows, no install)
             - `INSTRUCTIONS.txt` — start here
             - `extension/` — the Chrome/Edge paste assistant for World Anvil
-            - `already-converted/` — your current export, already converted (126 articles + map)
-            - `source-data/` — the Fantasia Archive export and Azgaar map this was built from
 
             Windows will warn that the exe is unsigned. More info → Run anyway.

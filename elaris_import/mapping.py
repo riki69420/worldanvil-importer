@@ -111,7 +111,6 @@ LINK_FIELDS = {
     "Neighbouring Locations",
     "Occupation/Class",
     "Other connected Locations",
-    "Other Names & Epithets",
     "Place of origin",
     "Prerequisites Skills/Spells/Other",
     "Related Occupations/Classes",
