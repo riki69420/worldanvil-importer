@@ -62,10 +62,15 @@ class MapData:
 
 
 def _classify(records: list) -> str | None:
-    """Name the collection a JSON array belongs to, from its record keys."""
+    """Name the collection a JSON array belongs to, from its record keys.
+
+    Removed records still count here: a map whose religions were all deleted
+    keeps their tombstones, and those are the only records with the keys that
+    identify the collection. ``named()`` is where tombstones get filtered.
+    """
     keys: set[str] = set()
     for item in records:
-        if isinstance(item, dict) and not item.get("removed"):
+        if isinstance(item, dict):
             keys |= set(item)
     if not keys:
         return None

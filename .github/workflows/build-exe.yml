@@ -28,6 +28,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt pyinstaller
 
+      - name: Run the test suite
+        run: |
+          pip install pytest
+          python -m pytest -q
+
       - name: Smoke-test the pipeline
         run: python build.py --out ci-out --no-png
 
@@ -35,10 +40,14 @@ jobs:
         run: pyinstaller --noconfirm --clean elaris-importer.spec
 
       - name: Check the executable starts
-        # --version is not a real flag; the app should still exit cleanly rather
-        # than crash on import, which is what this catches.
+        # --selftest imports every module, builds the window off-screen and
+        # exits 0. Windows runners have a desktop session, so Tk can open.
         run: |
-          Get-Item dist/ElarisImporter.exe | Format-List Name, Length
+          $exe = Get-Item dist/ElarisImporter.exe
+          "{0}  {1:N1} MB" -f $exe.Name, ($exe.Length / 1MB)
+          $p = Start-Process -FilePath $exe.FullName -ArgumentList "--selftest" -PassThru -Wait
+          if ($p.ExitCode -ne 0) { throw "self-test exited with $($p.ExitCode)" }
+          "self-test passed"
         shell: pwsh
 
       - uses: actions/upload-artifact@v4

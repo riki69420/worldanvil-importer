@@ -29,6 +29,8 @@ for when API access is available.
 
 ## The app
 
+Plain-language steps for non-programmers are in [`INSTRUCTIONS.txt`](INSTRUCTIONS.txt).
+
 `ElarisImporter.exe` is a desktop front end for all of it: point it at your
 export zip and your `.map`, press **Convert**, and optionally paste your World
 Anvil credentials and press **Convert and upload**.

@@ -65,9 +65,26 @@ class WorldAnvil:
         return self._request("GET", "/identity")
 
     def worlds(self, user_id: str) -> list[dict[str, Any]]:
-        body = {"limit": 50, "offset": 0, "user": {"id": user_id}}
-        result = self._request("POST", "/user/worlds", json=body)
-        return result.get("entities", result.get("worlds", []))
+        """Every world the user owns.
+
+        The parent id goes in the query string and paging in the body — the
+        convention every Boromir list endpoint follows.
+        """
+        return self._collection("/user/worlds", user_id)
+
+    def _collection(self, path: str, parent_id: str) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
+        offset = 0
+        while True:
+            result = self._request(
+                "POST", path, params={"id": parent_id},
+                json={"limit": 50, "offset": offset},
+            )
+            page = result.get("entities") or []
+            out.extend(page)
+            if len(page) < 50:
+                return out
+            offset += 50
 
     # -- articles ---------------------------------------------------------
     def create_article(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -80,16 +97,7 @@ class WorldAnvil:
 
     def world_articles(self, world_id: str) -> list[dict[str, Any]]:
         """Every article in a world, paged 50 at a time."""
-        out: list[dict[str, Any]] = []
-        offset = 0
-        while True:
-            body = {"limit": 50, "offset": offset, "world": {"id": world_id}}
-            result = self._request("POST", "/world/articles", json=body)
-            page = result.get("entities", result.get("articles", []))
-            if not page:
-                return out
-            out.extend(page)
-            offset += 50
+        return self._collection("/world/articles", world_id)
 
     # -- maps -------------------------------------------------------------
     def create_map(self, payload: dict[str, Any]) -> dict[str, Any]:

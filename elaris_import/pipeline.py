@@ -63,6 +63,11 @@ def find_export_root(path: Path) -> Path:
     """
     if not path.exists():
         raise PipelineError(f"{path} does not exist")
+    if not path.is_dir():
+        raise PipelineError(
+            f"{path.name} is not a folder or a .zip — choose the export .zip "
+            "or the unzipped export folder"
+        )
 
     candidates = [path, *(p for p in sorted(path.iterdir()) if p.is_dir())]
     for candidate in candidates:

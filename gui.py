@@ -242,10 +242,7 @@ class App(ttk.Frame):
         self._show_size()
 
     def _show_size(self) -> None:
-        try:
-            scale = int(self.scale.get())
-        except (tk.TclError, ValueError):
-            return
+        scale = self._scale_value()
         # 1536x695 is this map's native export size; close enough as a preview.
         self.size_label.configure(text=f"≈ {1536 * scale} × {695 * scale} px")
 
@@ -337,7 +334,7 @@ class App(ttk.Frame):
         export, map_file, out = self._inputs()
         return convert(
             export, map_file, out,
-            scale=int(self.scale.get()),
+            scale=self._scale_value(),
             render_png=self.render_png.get(),
             log=self.log,
         )
@@ -428,12 +425,19 @@ class App(ttk.Frame):
             self.auth_token.set(data.get("auth_token", ""))
         self._toggle_scale()
 
+    def _scale_value(self) -> int:
+        """The map scale as an int, clamped; the spinbox accepts free text."""
+        try:
+            return max(1, min(8, int(self.scale.get())))
+        except (tk.TclError, ValueError):
+            return 4
+
     def _save_settings(self) -> None:
         data = {
             "export_path": self.export_path.get(),
             "map_path": self.map_path.get(),
             "out_path": self.out_path.get(),
-            "scale": int(self.scale.get()),
+            "scale": self._scale_value(),
             "render_png": self.render_png.get(),
             "template_fields": self.template_fields.get(),
             "remember": self.remember.get(),
@@ -461,7 +465,26 @@ class App(ttk.Frame):
         self.master.destroy()
 
 
+def selftest() -> int:
+    """Prove the frozen build can import everything and open a window.
+
+    Run by CI on the built executable. A windowed exe has no stdout, so the
+    exit code is the whole report.
+    """
+    from elaris_import import azgaar, bbcode, fa_parse, mapping, wapi  # noqa: F401
+
+    root = tk.Tk()
+    root.withdraw()
+    App(root)
+    root.update()
+    root.destroy()
+    return 0
+
+
 def main() -> int:
+    if "--selftest" in sys.argv:
+        return selftest()
+
     root = tk.Tk()
     root.title(APP_NAME)
     root.minsize(720, 640)

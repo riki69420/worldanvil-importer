@@ -1,0 +1,125 @@
+ELARIS IMPORTER — HOW TO USE IT
+================================
+
+This turns your Fantasia Archive export and your Azgaar map into World Anvil
+articles and a map image. Read this top to bottom once; it takes two minutes.
+
+
+WHAT YOU NEED
+-------------
+1. Your Fantasia Archive export. That is the .zip file you downloaded from
+   Fantasia Archive (for example "Elaris - Export.zip"). You do NOT need to
+   unzip it.
+
+2. Your Azgaar map file (the one ending in .map). Optional — skip it if you
+   only want the articles.
+
+3. Windows 10 or 11 with Microsoft Edge or Google Chrome installed. Edge is
+   already on every Windows PC; it is used to draw the map image.
+
+
+GETTING THE PROGRAM
+-------------------
+1. Go to:  https://github.com/riki69420/claude/actions/workflows/build-exe.yml
+2. Click the newest run at the top of the list (green tick).
+3. Scroll down to "Artifacts" and click "ElarisImporter-windows".
+   A zip downloads.
+4. Unzip it anywhere. Inside is one file: ElarisImporter.exe
+
+First time you run it Windows shows "Windows protected your PC". That is
+because the program is not signed with a paid certificate, nothing more.
+Click "More info", then "Run anyway".
+
+
+STEP 1 — CONVERT (no World Anvil account needed for this)
+---------------------------------------------------------
+1. Open ElarisImporter.exe
+2. Next to "Fantasia Archive export", click Browse… and pick your export .zip
+3. Next to "Azgaar map", click Browse… and pick your .map file (or leave empty)
+4. "Output folder" is where the results go. The default is fine.
+5. Click  [ Convert ]
+6. Wait for the log at the bottom to say "Done."
+7. Click  [ Open output folder ]
+
+WHAT YOU GET IN THE OUTPUT FOLDER
+   bbcode\             One text file per article, sorted by World Anvil type
+                       (settlement, location, person, species, …). Each file
+                       is ready to paste into World Anvil.
+   map\elaris.png      Your map as a big image, ready to upload as a
+                       World Anvil map.
+   map\burgs.csv       Every town on the map with its position, for placing
+                       map pins.
+   dangling-links.txt  Links in your articles that point at something that
+                       does not exist in your export. Usually a typo in
+                       Fantasia Archive. Fix them there and convert again,
+                       or ignore them.
+
+
+STEP 2A — PUT ARTICLES INTO WORLD ANVIL BY HAND
+-----------------------------------------------
+Works for everyone, no subscription needed. Slow but simple.
+
+For each file in the bbcode folder:
+1. In World Anvil, click "Create article" and choose the type that matches
+   the folder name (a file in bbcode\settlement is a Settlement, and so on).
+2. Open the text file. Copy the TITLE line into the article title.
+3. Copy everything below "--- CONTENT ---" into the big text box.
+4. If the file has a "--- SIDEBAR ---" part, paste that into the sidebar box.
+5. Save.
+
+The @[Name] bits in the text turn into links automatically once the article
+with that name exists. Do the locations first, then everything else, and the
+links resolve themselves.
+
+
+STEP 2B — UPLOAD AUTOMATICALLY (needs a World Anvil Guild membership)
+---------------------------------------------------------------------
+World Anvil only lets you upload by program if you have a Worldbuilder's
+Guild rank ABOVE Grandmaster and have applied for an "application key".
+If you do not have that, skip this and use 2A.
+
+If you do:
+1. Get your two keys:
+     Application key — from the World Anvil developer application you
+                       were approved for.
+     Auth token      — World Anvil → your profile → API Keys (the
+                       "Get tokens…" button in the app opens that page).
+2. Paste both into the app.
+3. Click  [ Load worlds ]  and pick your world from the list.
+4. Click  [ Convert and upload ]
+5. Watch the log. Each article says "created" as it goes.
+
+Safe to run again: it remembers what it already created and updates those
+instead of making duplicates. Articles are created as PRIVATE so nothing is
+public until you decide.
+
+"Remember credentials on this computer" saves your keys so you do not have to
+paste them next time. They are saved as plain text on your PC — leave it
+unticked on a shared computer.
+
+
+THE MAP
+-------
+map\elaris.png is your map drawn from the .map file. If it looks plain
+(no colours, no mountains), that is because those layers were switched off
+in Azgaar when you saved the file. Open your map in Azgaar, turn on the layers
+you want (Layers menu: biomes, relief, states…), Save again, and convert
+again.
+
+To put it on World Anvil: World Anvil → Maps → New map → upload elaris.png.
+Then use map\burgs.csv to see where each town goes.
+
+
+IF SOMETHING GOES WRONG
+-----------------------
+- "no Fantasia Archive export found"   You picked the wrong file. Pick the
+                                       export .zip, or the folder that has
+                                       "Characters", "Items" etc. inside.
+- "PNG render skipped"                 No Edge or Chrome was found. Install
+                                       one, or open map\elaris.svg in any
+                                       browser and take a screenshot.
+- Upload says FAILED with 401          Wrong application key or auth token.
+- Upload says FAILED with 422          World Anvil rejected a field. Untick
+                                       "Send template fields" and try again.
+- Anything else                        Copy the text from the log box and
+                                       send it along with what you clicked.
