@@ -56,6 +56,12 @@ jobs:
           path: dist/ElarisImporter.exe
           if-no-files-found: error
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ElarisPasteAssistant-extension
+          path: extension/
+          if-no-files-found: error
+
       - name: Attach to release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2

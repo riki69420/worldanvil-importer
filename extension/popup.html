@@ -1,0 +1,49 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font: 13px/1.4 system-ui, sans-serif; width: 300px; margin: 0; padding: 14px; color: #222; }
+    h1 { font-size: 15px; margin: 0 0 10px; }
+    .stat { background: #f3f3f3; border-radius: 6px; padding: 8px 10px; margin-bottom: 10px; }
+    .stat b { font-size: 18px; }
+    label.file { display: block; border: 1px dashed #999; border-radius: 6px; padding: 10px; text-align: center; cursor: pointer; margin-bottom: 8px; }
+    label.file:hover { background: #fafafa; }
+    input[type=file] { display: none; }
+    button { width: 100%; padding: 7px; margin-top: 6px; border: 1px solid #bbb; border-radius: 5px; background: #fff; cursor: pointer; }
+    button:hover { background: #f3f3f3; }
+    button.danger { color: #a00; }
+    .msg { margin-top: 8px; min-height: 1.2em; color: #555; }
+    .msg.err { color: #a00; }
+    ol { padding-left: 18px; margin: 8px 0 0; color: #555; }
+    li { margin-bottom: 3px; }
+  </style>
+</head>
+<body>
+  <h1>Elaris Paste Assistant</h1>
+
+  <div class="stat">
+    <b id="count">0</b> articles loaded · <span id="done">0</span> done
+  </div>
+
+  <label class="file">
+    Load <code>articles.json</code>…
+    <input type="file" id="file" accept=".json,application/json">
+  </label>
+
+  <button id="open">Open World Anvil</button>
+  <button id="reset" class="danger">Reset "done" ticks</button>
+  <button id="forget" class="danger">Forget picked fields</button>
+
+  <div id="msg" class="msg"></div>
+
+  <ol>
+    <li>Run the converter; it writes <code>articles.json</code>.</li>
+    <li>Load that file here.</li>
+    <li>On World Anvil, open a new article of the right type. The panel on the right lists your articles — click <b>Fill</b>.</li>
+    <li>Check it, press World Anvil's <b>Save</b>.</li>
+  </ol>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -98,6 +98,40 @@ paste them next time. They are saved as plain text on your PC — leave it
 unticked on a shared computer.
 
 
+STEP 2C — THE CHROME EXTENSION (faster than 2A, no subscription needed)
+----------------------------------------------------------------------
+This is a helper for doing it by hand. It fills the article editor for you;
+YOU still press World Anvil's Save button for each article. Nothing is
+sent automatically.
+
+Install it once:
+1. Get the "extension" folder from the repo (Code → Download ZIP, unzip,
+   find the folder named "extension").
+2. In Chrome or Edge open:  chrome://extensions   (edge://extensions)
+3. Turn on "Developer mode" (top right).
+4. Click "Load unpacked" and pick the "extension" folder.
+5. Click the new puzzle-piece icon → Elaris Paste Assistant → "Load
+   articles.json…" and pick the articles.json from your output folder.
+
+Use it:
+1. On World Anvil, start a new article. Pick the type the panel shows next
+   to the title (Settlement, Character, …).
+2. A panel appears on the right listing all your articles. Search for the
+   one you are creating and click  [Fill].
+3. The title, content, sidebar and excerpt are filled in. Read it over.
+4. Press World Anvil's Save. The article is ticked off in the panel.
+5. Repeat. Ticked articles sink to the bottom so you can see what is left.
+
+If [Fill] says "partly filled":
+   World Anvil's boxes were not recognised. At the bottom of the panel click
+   "Title", then click the title box on the page. Do the same for
+   "Content". The panel remembers them from then on. [Copy] always works as
+   a fallback — it puts the content on the clipboard for Ctrl+V.
+
+Click an article's name in the panel to see its template fields
+(population, size, …) with copy buttons for the matching World Anvil boxes.
+
+
 THE MAP
 -------
 map\elaris.png is your map drawn from the .map file. If it looks plain
