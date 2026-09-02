@@ -2,3 +2,7 @@ __pycache__/
 *.pyc
 out/import-state.json
 .venv/
+build/
+dist/
+ci-out/
+*.spec.bak

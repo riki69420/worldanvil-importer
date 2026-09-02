@@ -14,6 +14,8 @@ for when API access is available.
 
 | Path | What it is |
 | --- | --- |
+| `gui.py` | the desktop app (Tkinter, stdlib only) |
+| `build.py` / `push.py` | the same pipeline on the command line |
 | `data/Elaris - Export/` | the Fantasia Archive export (126 documents) |
 | `data/Lenyhaha.map` | the Azgaar FMG map (v1.150.0) |
 | `out/bbcode/<template>/*.txt` | one paste-ready article per document |
@@ -25,13 +27,38 @@ for when API access is available.
 | `out/map/burgs.csv` | 28 settlements with pixel and fractional positions |
 | `out/map/states.csv` | 12 political entities with area and population |
 
-## Usage
+## The app
+
+`ElarisImporter.exe` is a desktop front end for all of it: point it at your
+export zip and your `.map`, press **Convert**, and optionally paste your World
+Anvil credentials and press **Convert and upload**.
+
+Download it from the [Actions tab][actions] — open the most recent
+**Build ElarisImporter.exe** run and grab the `ElarisImporter-windows`
+artifact. To produce a fresh one, run that workflow (Run workflow) or push a
+`v*` tag, which also attaches the exe to a release.
+
+[actions]: ../../actions/workflows/build-exe.yml
+
+It is a single file with no installer and no Python needed. Settings are
+remembered in `%APPDATA%\ElarisImporter\settings.json`; API credentials are
+only written there if you tick **Remember credentials on this computer**, and
+they are stored in the clear, so leave it unticked on a shared machine.
+
+To run the app from source instead:
 
 ```bash
 pip install -r requirements.txt
+python gui.py
+```
+
+## Command line
+
+```bash
 python build.py                 # regenerate out/ from data/
-python build.py --no-png        # skip the Chromium render
+python build.py --no-png        # skip the map render
 python build.py --scale 6       # bigger map (9216×4170)
+python build.py --export path/to/export.zip --map path/to/world.map --out out
 ```
 
 With API access:
@@ -45,9 +72,24 @@ python push.py --world <uuid> --dry-run
 python push.py --world <uuid>
 ```
 
-`push.py` records every created article in `out/import-state.json` keyed by its
-Fantasia Archive UUID. Re-running updates those articles in place rather than
-creating duplicates, so an interrupted run can just be repeated.
+Both the app and `push.py` record every created article in
+`out/import-state.json`, keyed by its Fantasia Archive UUID. Re-running updates
+those articles in place rather than creating duplicates, so an interrupted run
+can just be repeated.
+
+## Building the exe yourself
+
+PyInstaller freezes the interpreter it runs on and cannot cross-compile, so the
+Windows build has to happen on Windows — that is what
+`.github/workflows/build-exe.yml` uses GitHub's free `windows-latest` runner
+for. On your own Windows machine:
+
+```bat
+pip install -r requirements.txt pyinstaller
+pyinstaller --noconfirm --clean elaris-importer.spec
+```
+
+The result lands in `dist\ElarisImporter.exe` (~15 MB).
 
 ## How the conversion works
 
@@ -104,6 +146,14 @@ Two fixes make the embedded SVG render outside the FMG web app: the
 `./images/pattern*.png` references are dropped, and `mask="url(#land)"` is
 re-attached to the `#landmass` group — FMG applies it at load time, and without
 it the landmass rect paints over the whole ocean.
+
+Rasterising goes through a headless Chrome, Edge or Chromium found on the
+machine (`--headless --screenshot`), so nothing has to be bundled — Edge is on
+every Windows 10/11 install. cairosvg and the other Python SVG renderers were
+tried and rejected: this file leans on masks, `<use>` and per-label percentage
+font sizes that they scale wrong, producing a cropped map with labels several
+hundred pixels tall. If no browser is found the SVG is still written and the
+app says so.
 
 The exported SVG only contains the layers that were visible in FMG at export
 time. On this map that is coastlines, roads, borders and labels — biomes,

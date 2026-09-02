@@ -12,6 +12,9 @@ import json
 import os
 import re
 import shutil
+import subprocess
+import sys
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -121,24 +124,27 @@ def clean_svg(svg: str) -> str:
       mask itself is present in the defs, so re-attaching it is enough.
     """
     svg = re.sub(r'(xlink:href|href)="\./images/[^"]*"', 'href=""', svg)
-
-    def add_mask(m: re.Match) -> str:
-        return m.group(0) if "mask=" in m.group(0) else (
-            m.group(0)[:-1] + ' mask="url(#land)">'
-        )
-
-    svg = re.sub(r'<g id="landmass"[^>]*>', add_mask, svg, count=1)
+    svg = _set_attr(svg, "landmass", "mask", "url(#land)")
 
     # Coastlines are stroke-only groups; without an explicit fill they inherit
     # black and flood every landmass.
     for group in ("sea_island", "lake_island"):
-        svg = re.sub(
-            rf'<g id="{group}"((?:(?!fill=)[^>])*)>',
-            lambda m: f'<g id="{group}"{m.group(1)} fill="none">',
-            svg,
-            count=1,
-        )
+        svg = _set_attr(svg, group, "fill", "none")
+
     return svg
+
+
+def _set_attr(svg: str, group_id: str, attr: str, value: str) -> str:
+    """Add an attribute to a ``<g>`` that lacks it, self-closing tags included."""
+    pattern = re.compile(rf'<g id="{re.escape(group_id)}"([^>]*?)(/?)>')
+
+    def replace(m: re.Match) -> str:
+        attrs, slash = m.group(1), m.group(2)
+        if re.search(rf'\b{attr}=', attrs):
+            return m.group(0)
+        return f'<g id="{group_id}"{attrs.rstrip()} {attr}="{value}"{slash}>'
+
+    return pattern.sub(replace, svg, count=1)
 
 
 def burg_markers(data: MapData) -> list[dict]:
@@ -196,67 +202,118 @@ def state_rows(data: MapData) -> list[dict]:
     return rows
 
 
-def find_chromium() -> str | None:
-    """An installed Chromium, if one is somewhere Playwright will not look.
+class NoBrowserError(RuntimeError):
+    """No Chromium-family browser was found to rasterise with."""
 
-    Playwright only accepts the browser build it was compiled against, so a
-    system or pre-provisioned Chromium has to be passed as ``executable_path``.
+
+# Where a Chrome, Edge or Chromium install actually lives, per platform.
+BROWSER_PATHS = {
+    "win32": [
+        r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+        r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files\Chromium\Application\chrome.exe",
+    ],
+    "darwin": [
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+        "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+        "/Applications/Chromium.app/Contents/MacOS/Chromium",
+    ],
+}
+
+BROWSER_COMMANDS = [
+    "chrome", "google-chrome", "google-chrome-stable",
+    "chromium", "chromium-browser", "msedge", "microsoft-edge",
+]
+
+
+def find_browser() -> str | None:
+    """A Chromium-family browser to rasterise with, or ``None``.
+
+    Chrome, Edge and Chromium all accept ``--headless --screenshot``, so any of
+    them will do and no browser has to be shipped alongside the app. Edge is
+    present on every Windows 10/11 install, which is what makes this workable
+    for a packaged build.
     """
     candidates = [os.environ.get("CHROMIUM_PATH", "")]
+
+    # A Playwright install, if one happens to be present.
     browsers = Path(os.environ.get("PLAYWRIGHT_BROWSERS_PATH", "/opt/pw-browsers"))
-    candidates.append(str(browsers / "chromium"))
-    candidates.extend(
-        str(p) for p in sorted(browsers.glob("chromium-*/chrome-linux/chrome"))
-    )
-    candidates.extend(
-        shutil.which(n) or "" for n in ("chromium", "chromium-browser", "google-chrome")
-    )
+    if browsers.is_dir():
+        candidates.append(str(browsers / "chromium"))
+        candidates.extend(str(p) for p in sorted(browsers.glob("chromium-*/*/chrome")))
+        candidates.extend(str(p) for p in sorted(browsers.glob("chromium-*/*/chrome.exe")))
+
+    candidates.extend(shutil.which(name) or "" for name in BROWSER_COMMANDS)
+    candidates.extend(BROWSER_PATHS.get(sys.platform, []))
+
     for candidate in candidates:
         if candidate and Path(candidate).exists():
             return candidate
     return None
 
 
-def render_png(svg: str, out_path: Path, scale: int = 4) -> Path:
-    """Rasterise the map with Chromium via Playwright.
+def render_png(svg: str, out_path: Path, scale: int = 4, timeout: int = 180) -> Path:
+    """Rasterise the map by screenshotting it in a headless browser.
 
     ``scale`` multiplies the SVG's native size; the FMG export is only ~1500px
     wide, which is too small to use as a World Anvil map layer.
+
+    Chromium's own SVG engine is used rather than a Python renderer because the
+    FMG export leans on masks, ``<use>`` and per-label transforms that the
+    lighter renderers get wrong.
     """
-    from playwright.sync_api import sync_playwright
+    browser = find_browser()
+    if not browser:
+        raise NoBrowserError(
+            "no Chrome, Edge or Chromium found — install one, or set "
+            "CHROMIUM_PATH to its executable"
+        )
 
     m = re.search(r'width="(\d+)"\s+height="(\d+)"', svg)
     if not m:
         raise ValueError("SVG has no width/height attributes")
     width, height = int(m.group(1)), int(m.group(2))
 
-    page_html = (
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    page = out_path.with_suffix(".render.html")
+    page.write_text(
         "<!doctype html><meta charset='utf-8'>"
         "<style>html,body{margin:0;padding:0;background:#466eab}"
-        "svg{display:block}</style>" + svg
+        "svg{display:block}</style>" + svg,
+        encoding="utf-8",
     )
-    html_path = out_path.with_suffix(".html")
-    html_path.write_text(page_html, encoding="utf-8")
 
-    launch: dict = {}
-    executable = find_chromium()
-    if executable:
-        launch["executable_path"] = executable
+    # A dedicated profile keeps the run from colliding with the user's own
+    # browser session, which otherwise makes headless Chrome exit immediately.
+    with tempfile.TemporaryDirectory() as profile:
+        command = [
+            browser,
+            "--headless",
+            "--disable-gpu",
+            "--no-sandbox",
+            "--hide-scrollbars",
+            "--virtual-time-budget=5000",
+            f"--force-device-scale-factor={scale}",
+            f"--window-size={width},{height}",
+            f"--user-data-dir={profile}",
+            f"--screenshot={out_path}",
+            page.as_uri(),
+        ]
+        try:
+            result = subprocess.run(
+                command, capture_output=True, text=True, timeout=timeout
+            )
+        except subprocess.TimeoutExpired:
+            raise NoBrowserError(f"{Path(browser).name} timed out after {timeout}s")
+        finally:
+            page.unlink(missing_ok=True)
 
-    try:
-        with sync_playwright() as p:
-            browser = p.chromium.launch(**launch)
-            try:
-                page = browser.new_page(
-                    viewport={"width": width, "height": height},
-                    device_scale_factor=scale,
-                )
-                page.goto(html_path.as_uri())
-                page.wait_for_timeout(1500)  # let webfonts and filters settle
-                page.screenshot(path=str(out_path), full_page=False)
-            finally:
-                browser.close()
-    finally:
-        html_path.unlink(missing_ok=True)
-
+    if not out_path.exists():
+        detail = (result.stderr or result.stdout or "").strip().splitlines()
+        raise NoBrowserError(
+            f"{Path(browser).name} wrote no image"
+            + (f": {detail[-1]}" if detail else "")
+        )
     return out_path
