@@ -20,15 +20,24 @@ WHAT YOU NEED
 
 GETTING THE PROGRAM
 -------------------
-1. Go to:  https://github.com/riki69420/claude/actions/workflows/build-exe.yml
-2. Click the newest run at the top of the list (green tick).
-3. Scroll down to "Artifacts" and click "ElarisImporter-windows".
-   A zip downloads.
-4. Unzip it anywhere. Inside is one file: ElarisImporter.exe
+1. Go to:  https://github.com/riki69420/claude/releases
+2. Under the newest release, click  ElarisImporter-v1.0.0.zip  (or whatever
+   the newest version number is). It downloads.
+3. Unzip it anywhere, for example your Desktop. Inside:
 
-First time you run it Windows shows "Windows protected your PC". That is
-because the program is not signed with a paid certificate, nothing more.
+     ElarisImporter.exe     the program
+     INSTRUCTIONS.txt       this file
+     extension\             the Chrome/Edge helper (Step 2C)
+     already-converted\     your current export, ALREADY converted — you can
+                            skip Step 1 and go straight to Step 2 with this
+     source-data\           the export and map it was made from
+
+First time you run the exe Windows shows "Windows protected your PC". That
+is because the program is not signed with a paid certificate, nothing more.
 Click "More info", then "Run anyway".
+
+(If you have a newer export than the one in already-converted\, run Step 1
+on it. Otherwise you never need to open the exe at all.)
 
 
 STEP 1 — CONVERT (no World Anvil account needed for this)

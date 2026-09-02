@@ -3,6 +3,9 @@ name: Build ElarisImporter.exe
 # The .exe has to be built on Windows — PyInstaller freezes the interpreter it
 # runs on and cannot cross-compile. This uses GitHub's free windows-latest
 # runner so no local Windows machine is needed.
+#
+# Every run produces the bundle zip as an artifact. Pushing a v* tag also
+# publishes it as a GitHub Release, which is the download people should use.
 
 on:
   workflow_dispatch:
@@ -26,15 +29,10 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt pyinstaller
+          pip install -r requirements.txt pyinstaller pytest
 
       - name: Run the test suite
-        run: |
-          pip install pytest
-          python -m pytest -q
-
-      - name: Smoke-test the pipeline
-        run: python build.py --out ci-out --no-png
+        run: python -m pytest -q
 
       - name: Build the executable
         run: pyinstaller --noconfirm --clean elaris-importer.spec
@@ -50,20 +48,49 @@ jobs:
           "self-test passed"
         shell: pwsh
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ElarisImporter-windows
-          path: dist/ElarisImporter.exe
-          if-no-files-found: error
+      - name: Convert the bundled data
+        # The runner has Edge, so this also exercises the real map render path
+        # the packaged app uses on a user's PC. Output ships in the bundle so
+        # the current export is usable without running anything.
+        run: python build.py --out bundle/already-converted
+
+      - name: Assemble the bundle
+        run: |
+          $version = if ("${{ github.ref }}" -like "refs/tags/*") { "${{ github.ref_name }}" } else { "dev-" + "${{ github.sha }}".Substring(0, 7) }
+          Copy-Item dist/ElarisImporter.exe bundle/
+          Copy-Item INSTRUCTIONS.txt bundle/
+          Copy-Item README.md bundle/
+          Copy-Item -Recurse extension bundle/extension
+          Copy-Item -Recurse data bundle/source-data
+          Get-ChildItem bundle/already-converted/map | Format-Table Name, Length
+          $zip = "ElarisImporter-$version.zip"
+          Compress-Archive -Path bundle/* -DestinationPath $zip
+          "BUNDLE=$zip" >> $env:GITHUB_ENV
+          "{0}  {1:N1} MB" -f $zip, ((Get-Item $zip).Length / 1MB)
+          Get-FileHash $zip -Algorithm SHA256 | Format-List Hash
+        shell: pwsh
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ElarisPasteAssistant-extension
-          path: extension/
+          name: ElarisImporter-bundle
+          path: ${{ env.BUNDLE }}
           if-no-files-found: error
 
-      - name: Attach to release
+      - name: Publish release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/ElarisImporter.exe
+          name: Elaris Importer ${{ github.ref_name }}
+          files: |
+            ${{ env.BUNDLE }}
+            dist/ElarisImporter.exe
+          body: |
+            Download **ElarisImporter-${{ github.ref_name }}.zip** — it has everything:
+
+            - `ElarisImporter.exe` — the converter app (Windows, no install)
+            - `INSTRUCTIONS.txt` — start here
+            - `extension/` — the Chrome/Edge paste assistant for World Anvil
+            - `already-converted/` — your current export, already converted (126 articles + map)
+            - `source-data/` — the Fantasia Archive export and Azgaar map this was built from
+
+            Windows will warn that the exe is unsigned. More info → Run anyway.

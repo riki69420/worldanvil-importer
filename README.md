@@ -36,12 +36,12 @@ Plain-language steps for non-programmers are in [`INSTRUCTIONS.txt`](INSTRUCTION
 export zip and your `.map`, press **Convert**, and optionally paste your World
 Anvil credentials and press **Convert and upload**.
 
-Download it from the [Actions tab][actions] — open the most recent
-**Build ElarisImporter.exe** run and grab the `ElarisImporter-windows`
-artifact. To produce a fresh one, run that workflow (Run workflow) or push a
-`v*` tag, which also attaches the exe to a release.
-
-[actions]: ../../actions/workflows/build-exe.yml
+**Download the bundle from [Releases](../../releases)** —
+`ElarisImporter-vX.Y.Z.zip` holds the exe, the extension, the instructions,
+the already-converted output and the source data. Every push of a `v*` tag
+builds and publishes one; a manual run of the
+[workflow](../../actions/workflows/build-exe.yml) produces the same zip as an
+artifact without publishing a release.
 
 It is a single file with no installer and no Python needed. Settings are
 remembered in `%APPDATA%\ElarisImporter\settings.json`; API credentials are
