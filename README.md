@@ -63,24 +63,34 @@ python gui.py
 ## The browser extension
 
 `extension/` is a Manifest V3 Chrome/Edge extension that sits on World Anvil's
-pages and fills the open article editor from `articles.json` — title, content,
-sidebar, excerpt — when you click **Fill**. You press Save. It submits nothing
-itself, which keeps it inside ordinary use of the site and avoids the
-Grandmaster gate entirely.
+pages and imports the converted `articles.json`. It works on the current World
+Anvil editor ("Plutarch", the block editor on `/p/athena/...` pages) and has
+two modes:
 
-World Anvil's editor markup isn't documented, so fields are found two ways:
-heuristics on `name`/`id`/`placeholder` (`article[title]`, `content`, the
-largest textarea for the body), and a **pick** mode where you click a field
-once and its selector is remembered. Progress (which articles are done) and
-picked selectors persist in `chrome.storage.local`.
+- **Fill** writes one article into the editor that is open: the title through
+  the header input, body and sidebar as a paste into the block editor. World
+  Anvil autosaves.
+- **Fill all shown** creates every listed article through the same internal
+  save calls the editor makes, then writes title, text, sidebar, excerpt,
+  tree icon, folder (one category per kind) and the matching template boxes
+  (population, sex, lifespan, price…). Every `@[link]` becomes a real mention
+  because all article ids are known after the first pass. Articles that
+  already exist with text are left alone and ticked; empty ones are reused.
+  **Sort into folders** and **Delete imported…** (two-click confirm, for
+  starting over) use the same calls.
+
+Progress, created-article ids and the title→id link cache persist in
+`chrome.storage.local`. World Anvil limits the excerpt to 255 characters; the
+converter and the extension both trim to that.
 
 Install: `chrome://extensions` → Developer mode → Load unpacked → the
-`extension` folder. Then click the icon and load `articles.json`.
+`extension` folder. Then click the icon and load `articles.json`. Plain-language
+steps are in `INSTRUCTIONS.txt`; the editor and API details discovered while
+building this are in `HANDOFF.md`.
 
-It is tested by loading it into a real Chromium against mock editor pages —
-one with obvious field names, one with obscure ones — covering the popup file
-load, heuristic fill, largest-textarea fallback, pick mode, and persistence
-across reloads (`tests/test_extension.py`, needs Playwright + a display).
+`tests/test_extension.py` (Playwright, run directly, needs a display) still
+targets the pre-1.1.0 heuristic panel and mock editor pages; the live editor
+path was verified by hand against worldanvil.com.
 
 ## Command line
 
