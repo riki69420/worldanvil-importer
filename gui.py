@@ -304,8 +304,11 @@ class App(ttk.Frame):
             try:
                 target()
             except PipelineError as exc:
-                self.log(f"\nERROR: {exc}")
-                self.after(0, lambda: messagebox.showerror(APP_NAME, str(exc)))
+                # Bind the text now: `exc` is unbound when the except block
+                # ends, and this dialog is shown later on the main thread.
+                message = str(exc)
+                self.log(f"\nERROR: {message}")
+                self.after(0, lambda: messagebox.showerror(APP_NAME, message))
             except Exception:
                 self.log("\nUnexpected error:\n" + traceback.format_exc())
                 self.after(0, lambda: messagebox.showerror(

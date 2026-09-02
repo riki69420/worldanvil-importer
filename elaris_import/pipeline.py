@@ -14,7 +14,7 @@ import tempfile
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable, Iterable
+from typing import Callable
 
 from . import azgaar
 from .bbcode import build_all, dangling_mentions
