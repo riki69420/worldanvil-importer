@@ -44,7 +44,7 @@
 
   const TEMPLATE_NAMES = {
     article: "Generic article", settlement: "Settlement", location: "Geographic Location",
-    landmark: "Building / Landmark", person: "Character", species: "Species",
+    landmark: "Building / Landmark", person: "Person", species: "Species",
     organization: "Organization", language: "Language", item: "Item",
     material: "Material", profession: "Profession", spell: "Spell",
     ethnicity: "Ethnicity", myth: "Myth / Legend", condition: "Condition",

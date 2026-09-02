@@ -121,7 +121,7 @@ Install it once:
 
 Use it:
 1. On World Anvil, start a new article. Pick the type the panel shows next
-   to the title (Settlement, Character, …).
+   to the title (Settlement, Person, Item, …).
 2. A panel appears on the right listing all your articles. Search for the
    one you are creating and click  [Fill].
 3. The title, content, sidebar and excerpt are filled in. Read it over.
