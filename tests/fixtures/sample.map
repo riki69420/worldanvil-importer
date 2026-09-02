@@ -1,0 +1,22 @@
+1.150.0|File can be loaded in azgaar.github.io/Fantasy-Map-Generator|2026-1-1|1|400|200|0
+km|5|square|m|2|°C|||||||1000|1||||||{}
+{"latT":90,"latN":45,"latS":-45,"lonT":180,"lonW":-90,"lonE":90}
+[{"i":0,"name":"Marine","color":"#466eab"}]
+[]
+<svg id="map" width="400" height="200" version="1.1" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+<path id="feature_2" d="M50,50 L350,50 L350,150 L50,150 Z"/>
+<mask id="land"><use href="#feature_2" data-f="2" fill="white"/></mask>
+      </defs>
+<g id="viewbox"><g id="ocean" data-layer="ocean"><g id="oceanLayers" data-group="oceanLayers"><rect id="oceanBase" x="0" y="0" width="400" height="200" fill="#466eab"/></g><g id="oceanPattern" data-group="oceanPattern"><rect x="0" y="0" width="400" height="200" fill="url(#oceanic)"/></g></g><g id="landmass" opacity="1" fill="#eef6fb" data-layer="landmass"><rect x="0" y="0" width="400" height="200"/></g><g id="coastline" data-layer="coastline"><g id="sea_island" opacity="0.5" stroke="#1f3846" stroke-width="0.5" data-group="sea_island"><use href="#feature_2" data-f="2"/></g><g id="lake_island" opacity="1" stroke="#7c8eaf" stroke-width="0.35" data-group="lake_island"/></g><g id="labels" font-size="91.98px" data-layer="labels"><g id="labels-state" data-group="state" font-size="22%"><text x="200" y="100">Testland</text></g></g></g>
+<pattern id="oceanic"><image href="./images/pattern1.png"/></pattern>
+</svg>
+{"spacing":10,"cellsX":40,"cellsY":20}
+0,0,0
+[0, {"i": 1, "type": "ocean", "land": false, "border": true, "cells": 10, "firstCell": 0}, {"i": 2, "type": "island", "land": true, "border": false, "cells": 30, "firstCell": 5}]
+[{"name": "Wildlands", "i": 0, "base": 1, "shield": "round", "type": "Generic"}, {"name": "Mockfolk", "i": 1, "base": 2, "shield": "heater", "type": "Generic"}]
+[{"i": 0, "name": "Neutrals", "neighbors": [], "diplomacy": []}, {"i": 1, "name": "Testland", "fullName": "Republic of Testland", "form": "Republic", "burgs": 2, "cells": 20, "area": 1000, "urban": 3.5, "rural": 10, "color": "#ff0000", "neighbors": [2], "diplomacy": []}, {"i": 2, "name": "Removedia", "removed": true, "neighbors": [], "diplomacy": []}]
+[0, {"i": 1, "cell": 5, "x": 100.5, "y": 80.25, "name": "Mockshire", "state": 1, "culture": 1, "religion": 1, "population": 1.0, "capital": 1, "port": 0, "type": "Generic"}, {"i": 2, "cell": 6, "x": 300, "y": 120, "name": "Stubton", "state": 1, "culture": 1, "religion": 0, "population": 0.4, "capital": 0, "port": 1, "type": "River"}, {"i": 3, "removed": true}]
+[{"name": "No religion", "i": 0, "cells": 5}, {"name": "Old Faith", "i": 1, "form": "Polytheism", "culture": 1, "cells": 20, "removed": true}]
+[0, {"i": 1, "name": "Testshire", "formName": "Shire", "center": 5, "burg": 1, "state": 1}]
+[{"i": 1, "source": 1, "mouth": 2, "discharge": 10, "basin": 1, "name": "Mockwater"}]

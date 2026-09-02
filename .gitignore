@@ -12,3 +12,6 @@ out/
 *.map
 *.zip
 .claude/
+
+# The synthetic test map is the one .map that belongs in the repo.
+!tests/fixtures/sample.map
