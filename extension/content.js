@@ -939,16 +939,46 @@
       }
 
       const filledTitle = results.some((r) => r.startsWith("Title: filled"));
-      const filledBody = results.some((r) => r.startsWith("Content: filled"));
+      let filledBody = results.some((r) => r.startsWith("Content: filled"));
+
+      // The editor's boxes were not there (page still loading, or a layout
+      // this script does not know) but this is an article page: write the
+      // article through World Anvil's own save call instead.
+      const pageId = location.pathname.match(/\/article\/([0-9a-f-]{36})/i)?.[1];
+      if (!filledBody && pageId && (await getWorldId())) {
+        status("Editor boxes not found — writing through World Anvil's save call instead…", "info");
+        const rec = { id: pageId, url: "", title: article.title };
+        state.created[article._faUuid] = rec;
+        rememberLink(rec);
+        unresolved.clear();
+        const titles = [...new Set([...mentionTitles(article.content), ...mentionTitles(article.sidebarcontent)])];
+        for (const t of titles) if (!linkFor(t)) await lookupTitle(t);
+        const body = {
+          title: article.title,
+          content: bbcodeToPlutarch(article.content, linkFor, unresolved),
+          sidebarcontent: bbcodeToPlutarch(article.sidebarcontent, linkFor, unresolved),
+          excerpt: shortExcerpt(article.excerpt),
+          icon: iconFor(article),
+        };
+        for (const [k, v] of Object.entries(templateBody(article, linkFor, unresolved))) if (!(k in body)) body[k] = v;
+        try { body.category = { id: await categoryId(categoryFor(article), state.worldId) }; } catch (_) { /* folder optional */ }
+        await api("PATCH", `/article?id=${pageId}`, body);
+        await chrome.storage.local.set({ created: state.created, links: state.links });
+        filledBody = true;
+        results.push("written through the save call — reload the page to see it");
+      }
       const missing = [...unresolved].sort();
       if (missing.length) state.pending[article._faUuid] = missing; else delete state.pending[article._faUuid];
       await chrome.storage.local.set({ pending: state.pending });
 
       if (filledTitle && filledBody) {
         await markDone(article, true);
-        const saveNote = visual
-          ? "World Anvil saves by itself (the clock at the bottom updates)."
-          : "Check it, then press Save.";
+        const viaApi = results.some((r) => r.startsWith("written through"));
+        const saveNote = viaApi
+          ? "Saved directly — reload the page to see it."
+          : visual
+            ? "World Anvil saves by itself (the clock at the bottom updates)."
+            : "Check it, then press Save.";
         const linkNote = missing.length
           ? ` ${missing.length} link${missing.length > 1 ? "s" : ""} left as plain text (${missing.slice(0, 4).join(", ")}${missing.length > 4 ? "…" : ""}) — press Fill again on this article once those exist.`
           : "";
