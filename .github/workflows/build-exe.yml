@@ -9,9 +9,18 @@ name: Build ElarisImporter.exe
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Publish a release with this tag (e.g. v1.0.0). Leave empty for a build only."
+        required: false
+        default: ""
   push:
     tags:
       - "v*"
+
+env:
+  # A tag push, a dispatched release, or a plain build — one version string.
+  VERSION: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || inputs.release_tag }}
 
 permissions:
   contents: write
@@ -56,7 +65,7 @@ jobs:
 
       - name: Assemble the bundle
         run: |
-          $version = if ("${{ github.ref }}" -like "refs/tags/*") { "${{ github.ref_name }}" } else { "dev-" + "${{ github.sha }}".Substring(0, 7) }
+          $version = if ("${{ env.VERSION }}") { "${{ env.VERSION }}" } else { "dev-" + "${{ github.sha }}".Substring(0, 7) }
           Copy-Item dist/ElarisImporter.exe bundle/
           Copy-Item INSTRUCTIONS.txt bundle/
           Copy-Item README.md bundle/
@@ -77,15 +86,19 @@ jobs:
           if-no-files-found: error
 
       - name: Publish release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: env.VERSION != ''
         uses: softprops/action-gh-release@v2
         with:
-          name: Elaris Importer ${{ github.ref_name }}
+          # On a dispatched release the tag does not exist yet; the action
+          # creates it at this commit.
+          tag_name: ${{ env.VERSION }}
+          target_commitish: ${{ github.sha }}
+          name: Elaris Importer ${{ env.VERSION }}
           files: |
             ${{ env.BUNDLE }}
             dist/ElarisImporter.exe
           body: |
-            Download **ElarisImporter-${{ github.ref_name }}.zip** — it has everything:
+            Download **ElarisImporter-${{ env.VERSION }}.zip** — it has everything:
 
             - `ElarisImporter.exe` — the converter app (Windows, no install)
             - `INSTRUCTIONS.txt` — start here
