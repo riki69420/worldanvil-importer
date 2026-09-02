@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Elaris Paste Assistant",
-  "version": "1.0.0",
-  "description": "Fills World Anvil's article editor from your converted Fantasia Archive export, one article at a time. You press Save.",
+  "version": "1.1.0",
+  "description": "Fills World Anvil's article editor from your converted Fantasia Archive export, one article at a time.",
   "permissions": ["storage", "unlimitedStorage", "clipboardWrite"],
   "host_permissions": ["https://www.worldanvil.com/*"],
   "background": { "service_worker": "background.js" },

@@ -21,7 +21,7 @@ WHAT YOU NEED
 GETTING THE PROGRAM
 -------------------
 1. Go to:  https://github.com/riki69420/claude/releases
-2. Under the newest release, click  ElarisImporter-v1.0.0.zip  (or whatever
+2. Under the newest release, click  ElarisImporter-v1.0.2.zip  (or whatever
    the newest version number is). It downloads.
 3. Unzip it anywhere, for example your Desktop. Inside:
 
@@ -106,36 +106,98 @@ unticked on a shared computer.
 
 STEP 2C — THE CHROME EXTENSION (faster than 2A, no subscription needed)
 ----------------------------------------------------------------------
-This is a helper for doing it by hand. It fills the article editor for you;
-YOU still press World Anvil's Save button for each article. Nothing is
-sent automatically.
+This is a helper for doing it by hand. It fills the article editor for you,
+one article per click. World Anvil's editor saves by itself a moment later
+(the little clock at the bottom of the editor updates).
 
 Install it once:
-1. Get the "extension" folder from the repo (Code → Download ZIP, unzip,
-   find the folder named "extension").
+1. Use the "extension" folder from the zip you downloaded.
 2. In Chrome or Edge open:  chrome://extensions   (edge://extensions)
 3. Turn on "Developer mode" (top right).
 4. Click "Load unpacked" and pick the "extension" folder.
 5. Click the new puzzle-piece icon → Elaris Paste Assistant → "Load
    articles.json…" and pick the articles.json from your output folder.
 
-Use it:
-1. On World Anvil, start a new article. Pick the type the panel shows next
-   to the title (Settlement, Person, Item, …).
-2. A panel appears on the right listing all your articles. Search for the
-   one you are creating and click  [Fill].
-3. The title, content, sidebar and excerpt are filled in. Read it over.
-4. Press World Anvil's Save. The article is ticked off in the panel.
-5. Repeat. Ticked articles sink to the bottom so you can see what is left.
+THE FAST WAY — "Fill all shown"
+1. Open any one article of your world in World Anvil's editor (so the panel
+   knows which world). Bettiea Lundereth will do.
+2. In the panel, leave the dropdown on "All types" and press
+   [Fill all shown (126)]. It asks you to click once more to confirm.
+3. Wait. It creates every article first (a name flashes by every second),
+   then writes the text into each one. About 5 minutes for 126 articles.
+   [Stop] halts after the current article; pressing Fill all again carries on
+   where it left off.
+4. Reload the page. Every article is in World Anvil's tree, with the links
+   between them already working, title, text, sidebar and excerpt filled.
+
+   An article that already exists with the same name and has text in it is
+   left alone and just ticked, so nothing you wrote by hand is overwritten.
+   An article that exists but is empty is used rather than duplicated.
+
+   Only names that exist in neither World Anvil nor your export stay as plain
+   text (they are listed in dangling-links.txt from Step 1).
+
+TEMPLATE BOXES
+   Fill all also fills World Anvil's own boxes where Fantasia Archive has
+   the same thing: population and size for places, sex/age/height/weight
+   and species for characters, lifespan for species, price for currencies,
+   and so on. The same information also stays in the main text under its
+   heading, so nothing is lost if a box has no match.
+
+FOLDERS
+   Fill all also files each article into a folder by kind (Characters, Items,
+   Currencies, Settlements, Geography, Buildings & Landmarks, Species,
+   Languages, Professions & Classes, Spells & Skills, Organizations,
+   Religions, Schools of Magic, Materials), making the folder if needed.
+   [Sort into folders] does the same for articles that were already on
+   World Anvil before (it leaves anything that is already in a folder where
+   it is). Reload the page to see the tree; drag things around afterwards as
+   usual.
+
+STARTING OVER
+   [Delete imported…] at the bottom of the panel removes every article in
+   the loaded list from World Anvil, plus the folders this tool made, and
+   clears the ticks. It asks twice and tells you if any of those articles
+   were not made by the tool (same name, written by hand) — those go too.
+   There is no undo from here, so read the red button before clicking it a
+   second time. Afterwards reload the page and press Fill all shown again.
+
+THE SLOW WAY — one article at a time (repeat once per article):
+1. On World Anvil, press "+ Article" (bottom left). Pick the tile whose name
+   matches the badge next to the article in the panel (Character, Geography,
+   Settlement, Item, …). An empty editor opens.
+2. In the panel on the right, find the article and click  [Fill].
+   The panel looks up the links first ("Looking up links… 3/9"), then fills
+   the title, the main text and the sidebar. Takes a few seconds.
+3. Read it over. Wait for the clock at the bottom of the editor to update —
+   that is World Anvil saving. Then press "+ Article" for the next one.
+   Filled articles are ticked and sink to the bottom of the list.
+
+Tip: use the "All types" dropdown in the panel to do all Characters, then
+all Items, and so on — fewer trips through the template picker.
+
+ABOUT LINKS  (@[Name] in your text)
+   A link can only be made to an article that already exists on World Anvil.
+   When [Fill] meets a name that does not exist yet, it writes the name as
+   plain text and shows a yellow "3 links" badge on that article. Once all
+   your articles exist, choose "Links to redo" in the dropdown, open each of
+   those articles again (click it in World Anvil's tree) and press [Fill]
+   again: everything is rewritten with the links in place. Doing the
+   locations first means fewer articles need this second pass.
+
+   Fill REPLACES the title, main text and sidebar every time. Do not hand-edit
+   an article until you are done pressing Fill on it.
+
+Excerpt: World Anvil's new editor has no excerpt box, so the excerpt is not
+filled. Click an article's name in the panel to copy it (and the tags and
+template fields) for pasting by hand if you want them.
 
 If [Fill] says "partly filled":
-   World Anvil's boxes were not recognised. At the bottom of the panel click
-   "Title", then click the title box on the page. Do the same for
+   World Anvil's boxes were not recognised (this can happen if World Anvil
+   changes its editor, or in the old-style editor). At the bottom of the
+   panel click "Title", then click the title box on the page. Do the same for
    "Content". The panel remembers them from then on. [Copy] always works as
    a fallback — it puts the content on the clipboard for Ctrl+V.
-
-Click an article's name in the panel to see its template fields
-(population, size, …) with copy buttons for the matching World Anvil boxes.
 
 
 THE MAP

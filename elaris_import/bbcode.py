@@ -21,7 +21,7 @@ from .mapping import (
 )
 
 LOCATION_TEMPLATES = {"location", "settlement", "landmark"}
-EXCERPT_LIMIT = 300
+EXCERPT_LIMIT = 255  # World Anvil's excerpt column holds 255 characters
 
 
 @dataclass

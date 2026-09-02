@@ -48,9 +48,150 @@ Built a converter (Python), a Tkinter desktop app frozen into a Windows exe by G
 - **v1.0.1** — https://github.com/riki69420/claude/releases/tag/v1.0.1 — `ElarisImporter-v1.0.1.zip` (exe + instructions + extension, no data). Built at `8d34895`; the later `43f36c5` badge rename is not in it yet (cosmetic).
 - v1.0.0 was **deleted** (its zip bundled the user's export and map). All Actions artifacts deleted. Git history rewritten with `filter-branch`; zero paths under `data/` or `out/` remain in any commit.
 
+## Update 2026-09-02 (second session): Fill verified on the live editor
+
+Tested with the Claude-in-Chrome tools on the user's Edge, logged in, on
+`https://www.worldanvil.com/p/athena/...` (World Anvil's new "Plutarch"
+visual editor). The old heuristics found nothing. Rewrote
+`extension/content.js` (local copy at
+`E:\Desktop\importer\ElarisImporter-v1.0.1\extension`, manifest bumped to
+1.1.0; **not yet pushed to the repo, no v1.0.2 release yet**).
+
+What the editor really is:
+- Title: `.entity-header-title` shows text; clicking its innermost `<p>` swaps
+  in `<input placeholder="Title">`. React native setter + input event + blur
+  commits it. Clicking the wrapper div does nothing.
+- Body and sidebar: BlockNote/ProseMirror editors (`.ProseMirror.bn-editor`).
+  Body = widest editor, top-most; sidebar = the narrow one to its right (this
+  is the `sidepanelcontenttop` field, not `sidebarcontent`). Location-type
+  articles have extra editors for template sections (Geography…) below the body.
+- `textContent` writes are ignored; plain-text pastes have `[` `]` stripped.
+  Synthetic `ClipboardEvent("paste")` with `text/html` works. HTML `<hN>` is
+  stored as BBCode `[h(N-1)|uuid]`, so BBCode `[h2]` → `<h3>`.
+- ProseMirror merges the first pasted block into the block the selection
+  starts in (heading → paragraph). Workaround in `pasteIntoEditor`: select all,
+  paste `<p>ELARISCLEAR</p>`, select just that word, paste `<p></p>`, then
+  paste the real HTML. Leaves one empty `[p][/p]` at the top; harmless.
+- Mentions: stored as `@[Title](Article:uuid)`; a plain `@[Title]` without an
+  id is NOT resolved by World Anvil (the handoff's earlier assumption was
+  wrong). Pasting `<span data-inline-content-type="mention" data-target-id
+  data-label data-url data-entity-class="Article">` creates a real mention
+  node. Ids come from `POST /api/internal/aboleth/world/search?id=<worldId>`
+  body `{"term": "..."}` (the same call the editor's "@" menu makes; response
+  `{articles:[{id,title,url,entityClass,...}]}`). World id from
+  `GET /api/internal/aboleth/article?granularity=2&id=<articleId>` → `world.id`.
+  Unresolved titles are written as plain text and stored in
+  `chrome.storage.local.pending[faUuid]`; the panel shows a "N links" badge
+  and a "Links to redo" filter; pressing Fill again re-links.
+- Saving: no Save button. The editor autosaves (`PATCH
+  /api/internal/aboleth/article?id=`) a few seconds after each change.
+- Excerpt: no box anywhere in the visual editor (checked Settings and Advanced
+  Options). Dropped from Fill; copy button in the details view instead.
+- Template picker tile names (badge names now match): Generic, Building,
+  Character, Country, Military, God/Deity, Geography, Item, Organization,
+  Religion, Species, Vehicle, Settlement, Condition, Conflict, Document,
+  Culture / Ethnicity, Language, Material, Military Formation, Myth, Natural
+  Law, Plot, Profession, Prose, Title, Spell, Technology, Tradition.
+
+Verified end to end on the user's real "Bettiea Lundereth" article
+(id c8f9e499-2a49-4540-9625-db6e4bdf5c73): title, 3×[h2], 9×[h3], 5 bullets,
+ELANDOR linked, sidebar filled, 8 links pending. `INSTRUCTIONS.txt` Step 2C
+rewritten to match.
+
+### "Fill all shown" (added same session, verified)
+
+The user asked for full automation. The panel now has a **Fill all shown**
+button (two clicks to confirm, Stop button while running) that uses the same
+internal API the editor uses:
+- `PUT /api/internal/aboleth/article` body `{title, templateType, world:{id}}`
+  → creates an article (response has `id`, `url`, `entityClass`).
+- `PATCH /api/internal/aboleth/article?id=<id>` body with any of `title`,
+  `content`, `sidebarcontent`, `excerpt` (plain JSON, cookie auth, no CSRF
+  header needed). Content is written in the editor's own BBCode shape
+  (`bbcodeToPlutarch`: `[p]…[/p]`, `[h2|uuid]`, `- item` lists,
+  `@[Title](Article:id)`).
+- Pass 1 ensures every shown, un-ticked article exists (search by exact
+  title: existing-with-text → left alone and ticked; existing-empty →
+  adopted; else created). Pass 2 writes content with every link resolved
+  from the id map, so no re-link pass is needed. `created[faUuid]` and
+  `worldId` persist in `chrome.storage.local`; re-running resumes.
+- Tested on the 8 Species articles: 6 created, Elf/Dwarf adopted, cross
+  links (Elf↔Dark-Elf, Gnome→Dwarf, →Bettiea/ELANDOR/VARALIS) stored as
+  real mentions. Those 8 exist with text now, so the real extension will
+  report them as "already had text — ticked" on the full run.
+- Excerpt IS settable this way (no UI box, but the API field works) but the
+  column is 255 chars: longer → HTTP 422 ("Unprocessable Data provided",
+  SQL error). `shortExcerpt()` trims at a word boundary. The converter's
+  `bbcode.py` still emits ≤300; lower it to 255 when the repo is updated.
+  First full run on the user's world: 97 written, 12 left alone (already had
+  text), 17 failed on this until the trim was added.
+- `api()` now retries 429/5xx with backoff (1.5 s doubling, 6 tries).
+- Full run finished: 126/126 on World Anvil (2026-09-02). Six articles had
+  one unlinked name each (export typos: "X & Y" vs "X - Y", "Mistriver
+  Gorge:", "Classes"); `loose()` matching added, re-fill of those six pending
+  the user's next extension reload.
+- **Sort into folders** button added: World Anvil folders = categories.
+  `POST /world/categories?id=<world>` lists them, `PUT /category
+  {title, world:{id}}` creates one (`parent:{id}` exists on the object for
+  nesting), `PATCH /article?id= {category:{id}}` files an article.
+  `GET /world/index` returns `{articles: {id: {id,title,template,link}}}`
+  for the whole world in one call (used for title→id). `categoryFor()`
+  maps template type + Fantasia Archive tag → folder name. Articles that
+  already have a category are left alone. Fill all now files articles as it
+  writes them (`body.category`).
+- **Delete imported…** button (user asked for a wipe to re-test the full
+  run): `DELETE /article?id=` and `DELETE /category?id=` both return
+  `{"success":true}`; the article 404s immediately afterwards (whether World
+  Anvil keeps a trash copy is unknown). Plan = loaded titles matched in
+  `/world/index` + folders named in `FOLDER_NAMES`; two-click confirm with a
+  10 s timeout, lists pre-existing same-name articles. Clears done/pending/
+  created/links afterwards. Never pressed by Claude; the user runs it.
+- **Template boxes**: every World Anvil template field is a top-level key on
+  the article JSON (GET granularity=2 lists them all, null when unset) and
+  accepts BBCode via PATCH; relation fields (`species`, `organization`,
+  `parent`…) take `{id}`. Field names per template captured 2026-09-02:
+  person (sex, age, height, weight, gender, eyes, hair, skin, speciesDisplay,
+  employment, birthplace, residence, currentstatus, history, specialAbilities,
+  titles, religion, education, languages, relations, family…), location/
+  settlement/landmark (population, areaSize, locationTemplateType, history,
+  geography, naturalresources, alternativename, demographics, industry,
+  government, constructed…), species (lifespan, growthrate, averageHeight,
+  geographicalOrigin, languages, majorOrganizations, historicalFigures,
+  ancenstry…), item (price, history, significance, currentLocation, weight,
+  rarity…), organization (history, territory, demographics, structure,
+  culture, publicAgenda, tenets, mythos, capital…), profession (type, tools,
+  demographics, workplace, qualifications, alternativeNames…), spell (level,
+  school, restrictions, effect…), language (geographicdistribution…),
+  material (geo, history…). `FIELD_MAP` in content.js maps the Fantasia
+  Archive field names (read back from the `[h3]` sections of the content)
+  onto these; `templateBody()` builds the extra PATCH keys. The body text
+  keeps the same sections, so values appear twice (body + box) by design.
+- Converter gap found by a field-by-field audit of all 819 export fields:
+  only "Status" (e.g. "Active/Alive", all 126 docs) is dropped by
+  `fa_parse.py`; everything else lands in content/sidebar/excerpt. Fix in
+  the repo: keep Status (person → `currentstatus`, others → sidebar line).
+  The Fantasia Archive export is plain markdown fields only (no images).
+- Tree icons: API-created articles have `icon: null`; the Create tiles set
+  e.g. `fa-person`, `fa-mountain-sun`, `fa-fish-fins`. `ICONS` map scraped
+  from `/p/athena/create` tile links; `PATCH {icon}` works. Fill all sets it;
+  Sort back-fills it where null.
+- ToS: World Anvil's terms could not be read (Cloudflare). This is
+  ordinary-volume use of the site's own endpoints on the user's own world;
+  the user asked for it explicitly.
+
+Still to do:
+- [ ] User must reload the unpacked extension (edge://extensions → Reload);
+      the browser tool cannot open that page. New panel has no "Excerpt" pick
+      button — that is how to tell the new version is loaded.
+- [ ] Copy `extension/content.js`, `manifest.json`, `INSTRUCTIONS.txt` into
+      the repo, update `tests/test_extension.py` fixtures for the visual
+      editor path, run the release workflow as v1.0.2.
+- [ ] `tests/fixtures/hard.html` could imitate the BlockNote editor to keep
+      the paste path covered.
+
 ## Open questions
 
-- [ ] **Does Fill work on World Anvil's real editor?** Never seen it (login-gated). Heuristics guess `article[title]`, `content`, `sidebarcontent`, `excerpt` and fall back to the largest textarea. If the body is a rich widget rather than a textarea, `setValue` may need a new branch. First feedback from the user resolves this.
+- [x] **Does Fill work on World Anvil's real editor?** Yes, after the rewrite above.
 - [ ] Are `@[Title]` mentions case-sensitive? User has both "Academy of Myr" (location) and "Academy of MYR" (school of magic) — distinct entities; rename one if links misbehave.
 - [ ] Should the repo be made **private**? GitHub keeps orphaned commits cached for a while after a force-push; old hash `3eeb0de` could still be fetched until GC. Recommended to the user; only they can do it (Settings → Change visibility). GitHub Support can purge on request.
 - [ ] World Anvil ToS on browser automation — unread (Cloudflare). Extension deliberately submits nothing itself.

@@ -135,9 +135,12 @@ def test_mentions_and_qualifiers(articles):
             assert m.strip() and "[" not in m, (a.title, m)
 
 
-def test_stub_article_gets_placeholder_content(articles):
+def test_stub_article_keeps_status_only(articles):
+    # A doc with nothing but "Document type" and "Status" still carries Status
+    # (it is a real field; earlier versions dropped it).
     wrench = next(a for a in articles if a.title == "Wrench")
-    assert wrench.content == "[i]Imported from Fantasia Archive.[/i]"
+    assert wrench.content == "[h3]Status[/h3]\nActive/Alive"
+    assert wrench.sidebar == "[b]Status[/b]\nActive/Alive"
 
 
 def test_location_template_fields(articles):

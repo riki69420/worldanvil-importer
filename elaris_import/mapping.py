@@ -68,7 +68,7 @@ LOCATION_FIELDS = {
 }
 
 # Fields consumed elsewhere and therefore never repeated in the body.
-CONSUMED = {"Document type", "Status", "Description & History"}
+CONSUMED = {"Document type", "Description & History"}
 
 # Fields whose values are article titles, so they render as @[mentions].
 # Everything else renders as literal text.
@@ -128,6 +128,7 @@ LINK_FIELDS = {
 
 # Short, at-a-glance fields that belong in the sidebar rather than the body.
 SIDEBAR_FIELDS = {
+    "Status",
     "Location type", "Population", "Size", "Type", "Occupation/Class type",
     "Type of group", "Form of religion", "Type of religion",
     "Follower/Subject count", "Average lifespan", "Average adulthood",
